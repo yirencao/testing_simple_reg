@@ -278,7 +278,58 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
     return reg_logistic_regression1(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
                                    batch_size=batch_size, num_batches=num_batches)
 
+def calculate_loss_logistics(y, tx, w):
+    """compute the cost by negative log likelihood."""
+    pred = sigmoid(tx.dot(w))
+    loss = y.T.dot(np.log(pred)) + (1 - y).T.dot(np.log(1 - pred))
+    return np.squeeze(- loss)
 
+def penalized_logistic_regression(y, tx, w, lambda_):
+    """return the loss and gradient."""
+    num_samples = y.shape[0]
+    loss = calculate_loss_logistics(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
+    gradient = calculate_gradient_logistics(y, tx, w) + 2 * lambda_ * w
+    return loss, gradient
+
+def calculate_gradient_logistics(y, tx, w):
+    """compute the gradient of loss."""
+    pred = sigmoid(tx.dot(w))
+    grad = tx.T.dot(pred - y)
+    return grad
+
+
+def learning_by_penalized_gradient(y, tx, w, gamma, lambda_):
+    """
+    Do one step of gradient descent, using the penalized logistic regression.
+    Return the loss and updated w.
+    """
+    loss, gradient = penalized_logistic_regression(y, tx, w, lambda_)
+    w -= gamma * gradient
+    return loss, w
+
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
+    """
+    reg logistic
+    """
+    threshold = 1e-8
+    losses = []
+
+    # build tx
+    # tx = np.c_[np.ones((y.shape[0], 1)), x]
+    w = initial_w
+
+    # start the logistic regression
+    for iter in range(max_iters):
+        # get loss and update w.
+        loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
+        # log info
+        if iter % 100 == 0:
+            print("Current iteration={i}, loss={l}".format(i=iter, l=loss))
+        # converge criterion
+        losses.append(loss)
+        if len(losses) > 1 and np.abs(losses[-1] - losses[-2]) < threshold:
+            break
+    return w, loss
 
 
 def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
