@@ -275,51 +275,11 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
     Returns:
         (np.ndarray, float): (weight parameters , negative log-likelihood)
     """
-    return reg_logistic_regression(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
+    return reg_logistic_regression1(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
                                    batch_size=batch_size, num_batches=num_batches)
 
-def compute_log_gradient(y, tx, w):
-    """compute the gradient of loss."""
-    pred = sigmoid(tx.dot(w))
-    grad = tx.T.dot(pred - y) / y.shape[0]
-    return grad
 
-def penalized_logistic_regression(y, tx, w, lambda_):
-    """return the loss and gradient."""
-    num_samples = y.shape[0]
-    loss = compute_log_loss(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
-    gradient = compute_log_gradient(y, tx, w) + 2 * lambda_ * w
-    return loss, gradient
 
-def learning_by_penalized_gradient(y, tx, w, gamma, lambda_):
-    """
-    Do one step of gradient descent, using the penalized logistic regression.
-    Return the loss and updated w.
-    """
-    loss, gradient = penalized_logistic_regression(y, tx, w, lambda_)
-    w -= gamma * gradient
-    return loss, w
-
-def reg_logistic_regression(y, tx, lambda_,w, max_iter, gamma):
-    y = np.expand_dims(y, axis=1)
-    losses = []
-    # w = np.ones((tx.shape[1], 1))
-
-    # start the logistic regression
-    for iter in range(max_iter):
-        # get loss and update w.
-        loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
-        # log info
-        if iter % (max_iter/100) == 0:
-            print("Current iteration={i}, loss= {l}".format(i=iter, l=loss), end="\r")
-        # converge criterion
-        losses.append(loss)
-    # visualization
-    # visualization(y, x, mean_x, std_x, w, "classification_by_logistic_regression_penalized_gradient_descent")
-    
-    loss = compute_log_loss(y, tx, w)
-    print("Regularized Logistic Regression: Loss= {l}".format(l=loss))
-    return (w, loss)
 
 def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
                             max_iters: int = 100, gamma: float = 0.1,
@@ -351,10 +311,10 @@ def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, init
             w = w - gamma * gradient
         
         if verbose and i % 10 == 0:
-            # y_pred = predict_logistic(w, tx)
-            # accuracy = compute_accuracy(y, y_pred)
+            y_pred = predict_logistic(w, tx)
+            accuracy = compute_accuracy(y, y_pred)
             loss = compute_log_loss(y, tx, w)
-            # print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
+            print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
 
     loss = compute_log_loss(y, tx, w)   
     
@@ -501,7 +461,7 @@ def logistic_regression_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, 
                           param_grid=param_grid, transform_fn=transform_fn, k_fold=k_fold, seed=seed)
 
 
-def reg_logistic_regression_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+def reg_logistic_regression1_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
                                k_fold: int = 5, seed: float = 1, transform: bool = True):
     """Run regularized logistic regression with grid search over cross validation
 
@@ -516,7 +476,7 @@ def reg_logistic_regression_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[s
     Returns:
         Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
     """
-    model_fn = reg_logistic_regression
+    model_fn = reg_logistic_regression1
     loss_fn = compute_log_loss
     predict_fn = predict_logistic
     transform_fn = build_poly if transform else None
