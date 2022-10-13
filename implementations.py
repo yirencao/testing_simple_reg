@@ -278,60 +278,125 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
     return reg_logistic_regression1(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
                                    batch_size=batch_size, num_batches=num_batches)
 
-def calculate_loss_logistics(y, tx, w):
-    """compute the cost by negative log likelihood."""
-    pred = sigmoid(tx.dot(w))
-    loss = y.T.dot(np.log(pred)) + (1 - y).T.dot(np.log(1 - pred))
-    return np.squeeze(- loss)
+def calculate_loss_logistic(y, tx, w):
+    """
+    Compute loss of logistic regression, return the loss.
+    Input:
+        y (labels of the training data)
+        tx (feature matrix of the training data)
+        w (weight)
+    """
+    # sigmoid_pred = sigmoid(tx.dot(w))
+    # loss = -(y.T.dot(np.log(sigmoid_pred)) + (1 - y).T.dot(np.log(1 - sigmoid_pred)))
+    # loss = np.squeeze(loss)
+    probs = sigmoid(tx @ w)
+    return -(1 / len(y)) * np.sum(y * np.log(probs) + (1 - y) * np.log(1 - probs))
 
 def penalized_logistic_regression(y, tx, w, lambda_):
-    """return the loss and gradient."""
-    num_samples = y.shape[0]
-    loss = calculate_loss_logistics(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
-    gradient = calculate_gradient_logistics(y, tx, w) + 2 * lambda_ * w
-    return loss, gradient
-
-def calculate_gradient_logistics(y, tx, w):
-    """compute the gradient of loss."""
-    pred = sigmoid(tx.dot(w))
-    grad = tx.T.dot(pred - y)
-    return grad
-
-
-def learning_by_penalized_gradient(y, tx, w, gamma, lambda_):
     """
-    Do one step of gradient descent, using the penalized logistic regression.
-    Return the loss and updated w.
+    Calculate loss, gradient, hessian for regularized logistic regression
+    Input:
+        y (labels relabeled as 0 and 1)
+        tx (feature matrix)
+        w (weights)
+        lambda_ (Lambda parameter)
     """
-    loss, gradient = penalized_logistic_regression(y, tx, w, lambda_)
-    w -= gamma * gradient
-    return loss, w
+    # return loss, gradient, and hessian
+    loss = np.squeeze(calculate_loss_logistic(y, tx, w) + lambda_ * (w.T.dot(w)))
+    grad = calculate_gradient_logistic(y, tx, w) + 2 * lambda_ * w
+    hessian = calculate_hessian(y, tx, w) + 2 * lambda_
 
-def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
-    """
-    reg logistic
-    """
-    threshold = 1e-8
-    losses = []
+    return loss, grad, hessian
 
-    # build tx
-    # tx = np.c_[np.ones((y.shape[0], 1)), x]
-    w = initial_w
-    
-    # start the logistic regression
-    for iter in range(max_iters):
-        # get loss and update w.
-        loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
-        # log info
-        if iter % 100 == 0:
-            print("Current iteration={i}, loss={l}".format(i=iter, l=loss))
-        # converge criterion
-        losses.append(loss)
-        if len(losses) > 1 and np.abs(losses[-1] - losses[-2]) < threshold:
-            break
-    loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
+
+def calculate_gradient_logistic(y, tx, w):
+    """
+    Calculate gradient of loss function in logistic regression
+    Input:
+        y (labels relabeled as 0 and 1)
+        tx (feature matrix)
+        w (weights)
+    """
+    # sigmoid_pred = sigmoid(tx.dot(w))
+    # grad = tx.T.dot(sigmoid_pred - y)
+    # return grad
+    return (1 / len(y)) * (tx.T @ (sigmoid(tx @ w) - y))
+
+
+def calculate_hessian(y, tx, w):
+    """
+    Calculate hessian in logistic regression
+    Input:
+        tx (feature matrix)
+        w (weights)
+    """
+    sigmoid_pred = sigmoid(tx.dot(w))
+
+    # Generate a diagonal matrix for values of sigmoid_pred
+    # Use its transpose form to generate a 1D array of sigmoid prediction values
+    sigmoid_pred = np.diag(sigmoid_pred.T[0])
+
+    # Use element-wise multiplication to get the diagonal matrix S
+    S = np.multiply(sigmoid_pred, (1 - sigmoid_pred))
+
+    # Calculate the hessian of L(w)
+    hessian = tx.T.dot(S).dot(tx)
+
+    return hessian
+
+def learning_by_penalized_logistic(y, tx, w, gamma, lambda_, batch_size=1):
+    """
+    Regularized logistic regression by stochastic gradient descent, return weight and loss
+    Input:
+        y (labels relabeled as 0 and 1)
+        tx (feature matrix)
+        w (weights)
+        gamma (Gamma parameter)
+        lambda_ (Lambda parameter)
+        batch_size (number of samples in batch)
+    """
+    for tx_batch, y_batch in batch_iter(y, tx, batch_size, num_batches=1):
+        loss, grad, _ = penalized_logistic_regression(y_batch, tx_batch, w, lambda_)
+        w = w - gamma * grad
 
     return w, loss
+
+def reg_logistic_regression(
+    y, tx, lambda_, initial_w, max_iters, gamma, threshold=1e-8
+):
+    """
+    Train using reg_logistic_regression
+    Input:
+        y: label of training data
+        tx: training data feature
+        lambda_: the lambda parameter
+        initial_w: Initial weights
+        max_iters: max iteration number
+        gamma: the gamma parameter
+        threshold: the threshold parameter
+    Return:
+        the weights and loss of the last iteration
+    """
+
+    losses = []
+    w = initial_w
+    ws = [initial_w]
+
+    for i in range(max_iters):
+        w, loss = learning_by_penalized_logistic(y, tx, w, gamma, lambda_)
+        losses.append(loss)
+        ws.append(w)
+
+        if i % 100 == 0:
+            print("Current iteration={a}, loss={b}".format(a=i, b=losses[-1]))
+
+        # Converge Criterion
+        if len(losses) > 1:
+            if np.abs(losses[-1] - losses[-2]) < threshold:
+                break
+    loss = np.squeeze(calculate_loss_logistic(y, tx, w) + lambda_ * (w.T.dot(w)))
+
+    return ws[-1], loss
 
 
 def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
