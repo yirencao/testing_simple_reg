@@ -33,15 +33,16 @@ def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
     # ws = [initial_w]
     # losses = []
     w = initial_w
-    # loss = None
+    loss = compute_loss(y, tx, w)
+    
     for n_iter in range(max_iters):
         # compute loss, gradient
         grad, err = compute_gradient(y, tx, w)
-        # loss = calculate_mse(err)
+        loss = calculate_mse(err)
         # gradient w by descent update
         w = w - gamma * grad
 
-    return w, calculate_mse(err)
+    return w, loss
 
 
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
@@ -51,7 +52,7 @@ def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
     # ws = [initial_w]
     # losses = []
     w = initial_w
-    # loss = None
+    loss = compute_loss(y, tx, w)
 
     for n_iter in range(max_iters):
         for y_batch, tx_batch in batch_iter(y, tx, batch_size=1, num_batches=1):
@@ -60,10 +61,10 @@ def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
             # update w through the stochastic gradient update
             w = w - gamma * grad
             # calculate loss
-            # loss = compute_loss(y, tx, w)
+            loss = compute_loss(y, tx, w)
             # store w and loss
 
-    return w, compute_loss(y, tx, w)
+    return w, loss
 
 
 
