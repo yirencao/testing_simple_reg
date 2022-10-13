@@ -191,7 +191,7 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
         np.ndarray: Array after applying the sigmoid function element wise
     """
     # clipping to avoid overflow
-    # x = np.clip(x, -20, 20)
+    x = np.clip(x, -20, 20)
     return 1 / (1 + np.exp(-x))
 
 
