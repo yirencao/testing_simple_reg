@@ -313,6 +313,7 @@ def reg_logistic_regression (y, tx, lambda_, initial_w, max_iters, gamma):
     
     error =[]
     gradient =[]
+    yhat = predict_sigmoid(tx, w)
     
     # apply gradient descent on least square loss function until meeting the max number of iterations
     for epoch in range(max_iters):
