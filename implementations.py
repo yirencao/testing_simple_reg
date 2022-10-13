@@ -277,46 +277,110 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
     """
     return reg_logistic_regression(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
                                    batch_size=batch_size, num_batches=num_batches)
+# def sigmoid(t):
+#     '''
+#     Applies the sigmoid function. Slight modification for stabulity reasons
+#     :param t: input
+#     :return: sigmoid applied to input
+#     '''
+#     return 1. / (1 + np.exp(-t))
 
+def compute_log_likelihood_loss(y, tx, w):
+    '''
+    Computes the log-likelihood loss
+    :param y: training labels vector
+    :param tx: an NxD feature matrix
+    :param w: weights vector
+    :return: log-likelihood loss
+    '''
+    y_hat = sigmoid(tx @ w)
+    loss = -y.T @ np.log(y_hat) - (1 - y).T @ np.log(1 - y_hat)
+    return np.squeeze(loss)
 
-def reg_logistic_regression(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
-                            gamma: float = 0.1, max_iters: int = 100, 
-                            batch_size: int = None, num_batches: int = None, verbose: bool = False, *args, **kwargs):
-    """ 
-    Computes the weight parameters of the L2 regularized logistic regression using gradient descent with custom batch size
-    and returns it with the negative log-likelihood of the model.
+def compute_log_likelihood_gradient(y, tx, w):
+    '''
+    Compute the gradient of the log-likelihood loss
+    :param y: training labels vector
+    :param tx: an NxD feature matrix
+    :param w: weights vector
+    :return: gradient of the loss
+    '''
+    y_hat = sigmoid(tx @ w)
+    e = y_hat - y
+    grad = tx.T @ e
+    return grad
 
-    Args:
-        y (np.ndarray): The dependent variable y
-        tx (np.ndarray): The data matrix (a row represents one observation of the features)
-        lambda_ (float): The L2 regularization hyper-parameter (higher values incur higher regularization)
-        initial_w (np.ndarray, optional): Initial weight paramter to start the stochastic gradient descent. If None, initialized randomly
-        max_iters (int, optional): Number of iterations. Defaults to 100.
-        gamma (float, optional): Fixed step-size for the gradient descent. Defaults to 0.1.
-        batch_size (int, optional): Batch size. Defaults to None (i.e full batch gradient descent)
-        num_batches (int, optional): Number of batches to sample. Defaults to None (i.e. uses all data)
-        verbose (bool, optional): Whether to print accuracy and loss at each iteration. Defaults to False.
+def reg_logistic_regression_one_step(y, tx, w, gamma, lambda_):
+    '''
+    Does one step of gradient descent on the regularized logistic regression loss
+    :param y: training labels vector
+    :param tx: an NxD feature matrix
+    :param w: weights vector
+    :param gamma: learning rate
+    :param lambda_: hyperparameter for the L2 regularization
+    :return: current loss and weight vector
+    '''
+    loss = compute_log_likelihood_loss(y, tx, w)
+    loss = loss + lambda_ * (w.T @ w)
+    grad = compute_log_likelihood_gradient(y, tx, w)
+    grad += 2 * lambda_ * w
+    w = w - gamma * grad
+    return loss, w
 
-    Returns:
-        (np.ndarray, float): (weight parameters , negative log-likelihood)
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
     """
-    w = initial_w if initial_w is not None else np.random.rand(tx.shape[1], 1)
-    y = y.reshape((-1, 1))
-
-    for i in range(max_iters):
-        for y_batch, tx_batch in batch_iter(y, tx, batch_size=batch_size, num_batches=num_batches):
-            gradient = logistic_gradient(y_batch, tx_batch, w, lambda_=lambda_)
-            w = w - gamma * gradient
-        
-        if verbose and i % 10 == 0:
-            y_pred = predict_logistic(w, tx)
-            accuracy = compute_accuracy(y, y_pred)
-            loss = compute_log_loss(y, tx, w)
-            print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
-
-    loss = compute_log_loss(y, tx, w)   
-    
+    Regularized logistic regression using gradient descent or SGD
+    :param y: training labels vector
+    :param tx: an NxD feature matrix
+    :param lambda_: the value for the hyperparameter
+    :param initial_w: initial weights vector
+    :param max_iters: number of maximum iterations for the stochastic gradient descent
+    :param gamma: update step coefficient for the gradient descent
+    :return: w = weights vector, loss = final loss
+    """
+    w = initial_w
+    for iter in range(max_iters):
+        loss, w = reg_logistic_regression_one_step(y, tx, w, gamma, lambda_)
     return w, loss
+
+# def reg_logistic_regression(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
+#                             max_iters: int = 100, gamma: float = 0.1,
+#                             batch_size: int = None, num_batches: int = None, verbose: bool = False, *args, **kwargs):
+#     """ 
+#     Computes the weight parameters of the L2 regularized logistic regression using gradient descent with custom batch size
+#     and returns it with the negative log-likelihood of the model.
+
+#     Args:
+#         y (np.ndarray): The dependent variable y
+#         tx (np.ndarray): The data matrix (a row represents one observation of the features)
+#         lambda_ (float): The L2 regularization hyper-parameter (higher values incur higher regularization)
+#         initial_w (np.ndarray, optional): Initial weight paramter to start the stochastic gradient descent. If None, initialized randomly
+#         max_iters (int, optional): Number of iterations. Defaults to 100.
+#         gamma (float, optional): Fixed step-size for the gradient descent. Defaults to 0.1.
+#         batch_size (int, optional): Batch size. Defaults to None (i.e full batch gradient descent)
+#         num_batches (int, optional): Number of batches to sample. Defaults to None (i.e. uses all data)
+#         verbose (bool, optional): Whether to print accuracy and loss at each iteration. Defaults to False.
+
+#     Returns:
+#         (np.ndarray, float): (weight parameters , negative log-likelihood)
+#     """
+#     w = initial_w if initial_w is not None else np.random.rand(tx.shape[1], 1)
+#     y = y.reshape((-1, 1))
+
+#     for i in range(max_iters):
+#         for y_batch, tx_batch in batch_iter(y, tx, batch_size=batch_size, num_batches=num_batches):
+#             gradient = logistic_gradient(y_batch, tx_batch, w, lambda_=lambda_)
+#             w = w - gamma * gradient
+        
+#         if verbose and i % 10 == 0:
+#             y_pred = predict_logistic(w, tx)
+#             accuracy = compute_accuracy(y, y_pred)
+#             loss = compute_log_loss(y, tx, w)
+#             print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
+
+#     loss = compute_log_loss(y, tx, w)   
+    
+#     return w, loss
 
 
 def cross_validate(y: np.ndarray, tx: np.ndarray, model_fn: Callable, loss_fn: Callable, predict_fn: Callable,
