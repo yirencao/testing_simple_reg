@@ -275,57 +275,51 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
     Returns:
         (np.ndarray, float): (weight parameters , negative log-likelihood)
     """
-    return reg_logistic_regression1(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
+    return reg_logistic_regression(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
                                    batch_size=batch_size, num_batches=num_batches)
 
-def logistic_loss(y, tx, w):
-    """Compute the loss by negative log likelihood for the logistic regression."""
-    epsilon = 1e-15
-    num_samples = len(y)
+def compute_log_gradient(y, tx, w):
+    """compute the gradient of loss."""
     pred = sigmoid(tx.dot(w))
-    pred = np.clip(pred, epsilon, 1-epsilon)
-    loss = y.T.dot(np.log(pred)) + (1 - y).T.dot(np.log(1 - pred))
-    return np.squeeze(- loss)
+    grad = tx.T.dot(pred - y) / y.shape[0]
+    return grad
 
-def reg_logistic_loss(y, tx, w,lambda_):
-    """Compute the regularized logistic loss by negative log likelihood."""
-    loss = logistic_loss(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
-    return loss
+def penalized_logistic_regression(y, tx, w, lambda_):
+    """return the loss and gradient."""
+    num_samples = y.shape[0]
+    loss = compute_log_loss(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
+    gradient = compute_log_gradient(y, tx, w) + 2 * lambda_ * w
+    return loss, gradient
 
-def logistic_gradient1(y, tx, w):
-    """Computes the gradient for the logistic gradient descent."""
-    gradient = np.dot(tx.transpose(),(sigmoid(np.dot(tx,w))-y))
-    return gradient
+def learning_by_penalized_gradient(y, tx, w, gamma, lambda_):
+    """
+    Do one step of gradient descent, using the penalized logistic regression.
+    Return the loss and updated w.
+    """
+    loss, gradient = penalized_logistic_regression(y, tx, w, lambda_)
+    w -= gamma * gradient
+    return loss, w
 
-def reg_logistic_gradient(y, tx, w, lambda_):
-    """Computes the gradient for the regularized logistic gradient descent"""
-    gradient = logistic_gradient1(y, tx, w) + 2 * lambda_ * w
-    return gradient
-
-def reg_logistic_regression(y, tx, lambda_, initial_w, max_iter, gamma): 
-    """Regularized logistic regression using gradient descent for max_iters iteration given
-    the input labelled data y, tx with initial_w, gamma and lambda as the initial weight,
-    learning rate and regularization factor respectively. Return final weights and loss"""
-    
-    num_samples = len(y)
+def reg_logistic_regression(y, tx, lambda_,w, max_iter, gamma):
+    y = np.expand_dims(y, axis=1)
     losses = []
-    w = initial_w
-    
+    # w = np.ones((tx.shape[1], 1))
+
+    # start the logistic regression
     for iter in range(max_iter):
-       
-        for batch_y, batch_tx in batch_iter(y, tx, batch_size=1, num_batches = 1):
-            
-            gradient = reg_logistic_gradient(batch_y,batch_tx,w, lambda_)
-            w -= gamma*gradient
-            loss = reg_logistic_loss(batch_y,batch_tx,w,lambda_)
-            
-            
+        # get loss and update w.
+        loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
+        # log info
+        if iter % (max_iter/100) == 0:
+            print("Current iteration={i}, loss= {l}".format(i=iter, l=loss), end="\r")
+        # converge criterion
         losses.append(loss)
-        
-    # Calculate loss over the whole training set with L2-regularization
-    loss = reg_logistic_loss(y,tx,w,lambda_)
+    # visualization
+    # visualization(y, x, mean_x, std_x, w, "classification_by_logistic_regression_penalized_gradient_descent")
     
-    return w, loss
+    loss = compute_log_loss(y, tx, w)
+    print("Regularized Logistic Regression: Loss= {l}".format(l=loss))
+    return (w, loss)
 
 def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
                             max_iters: int = 100, gamma: float = 0.1,
@@ -357,10 +351,10 @@ def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, init
             w = w - gamma * gradient
         
         if verbose and i % 10 == 0:
-            y_pred = predict_logistic(w, tx)
-            accuracy = compute_accuracy(y, y_pred)
+            # y_pred = predict_logistic(w, tx)
+            # accuracy = compute_accuracy(y, y_pred)
             loss = compute_log_loss(y, tx, w)
-            print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
+            # print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
 
     loss = compute_log_loss(y, tx, w)   
     
