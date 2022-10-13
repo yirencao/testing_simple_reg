@@ -1,157 +1,13 @@
+from functools import partial
+from typing import Tuple, Callable, Dict, Any
+from collections import namedtuple
+import inspect
 import numpy as np
+from helpers import *
+from itertools import product
 
 
-def build_poly(x, degree):
-    """polynomial basis functions for input data x, for j=0 up to j=degree."""
-    # ***************************************************
-    # INSERT YOUR CODE HERE
-    # polynomial basis function: TODO
-    # this function should return the matrix formed
-    # by applying the polynomial basis to the input data
-    # ***************************************************
-    #Initalize the array
-    output = np.zeros((x.shape[0],x.shape[1]*(degree+1)))
-    #For each column, set it to the desired value 
-    for i in range(0,degree+1):
-        for j in range(0,x.shape[1]):
-            vec = x[:,j] ** i
-            output[:,j+i*x.shape[1]] = vec.T
-    return output
-
-def compute_mse(y,tx,w):
-    e = y - tx @ w
-    MSE = 1.0/(2.0 * tx.shape[0]) * (e.dot(e))
-    return MSE 
-
-def compute_rmse(y,tx,w):
-    return np.sqrt(2*compute_mse(y,tx,w))
-
-
-def least_squares(y, tx):
-    """Calculate the least squares solution.
-       returns mse, and optimal weights.
-    
-    Args:
-        y: numpy array of shape (N,), N is the number of samples.
-        tx: numpy array of shape (N,D), D is the number of features.
-    
-    Returns:
-        w: optimal weights, numpy array of shape(D,), D is the number of features.
-        mse: scalar.
-
-    >>> least_squares(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]))
-    (array([ 0.21212121, -0.12121212]), 8.666684749742561e-33)
-    """
-    # ***************************************************
-    # INSERT YOUR CODE HERE
-    # least squares: TODO
-    # returns mse, and optimal weights
-    # ***************************************************
-    w = np.linalg.lstsq(tx,y)[0]
-    e = y - tx @ w
-    MSE = 1.0/(2.0 * tx.shape[0]) * (e.dot(e))
-    
-    return w
-
-def polynomial_regression(y,x):
-    """Constructing the polynomial basis function expansion of the data,
-       and then running least squares regression."""
-    # define parameters
-    degrees = [1, 3, 7, 12]
-
-    for ind, degree in enumerate(degrees):
-        # ***************************************************
-        # INSERT YOUR CODE HERE
-        # form the data to do polynomial regression.: TODO
-        # ***************************************************
-        newdata = build_poly(x,degree)
-        # ***************************************************
-        # INSERT YOUR CODE HERE
-        # least square and calculate RMSE: TODO
-        # ***************************************************
-        weights = least_squares(y,newdata) #[0]
-        rmse = compute_rmse(y,newdata,weights)
-        print("Processing {i}th experiment, degree={d}, rmse={loss}".format(
-              i=ind + 1, d=degree, loss=rmse))
-
-
-def split_data(x, y, ratio, seed=1):
-    """
-    split the dataset based on the split ratio. If ratio is 0.8 
-    you will have 80% of your data set dedicated to training 
-    and the rest dedicated to testing. If ratio times the number of samples is not round
-    you can use np.floor. Also check the documentation for np.random.permutation,
-    it could be useful.
-    
-    Args:
-        x: numpy array of shape (N,), N is the number of samples.
-        y: numpy array of shape (N,).
-        ratio: scalar in [0,1]
-        seed: integer.
-        
-    Returns:
-        x_tr: numpy array containing the train data.
-        x_te: numpy array containing the test data.
-        y_tr: numpy array containing the train labels.
-        y_te: numpy array containing the test labels.
-        
-    >>> split_data(np.arange(13), np.arange(13), 0.8, 1)
-    (array([ 2,  3,  4, 10,  1,  6,  0,  7, 12,  9]), array([ 8, 11,  5]), array([ 2,  3,  4, 10,  1,  6,  0,  7, 12,  9]), array([ 8, 11,  5]))
-    """
-    # set seed
-    np.random.seed(seed)
-
-    indexes = np.arange(x.shape[0])
-    np.random.shuffle(indexes)
-    cutoff = int(np.floor(ratio*x.shape[0]))
-    train_indexes = indexes[:cutoff]
-    test_indexes = indexes[cutoff:]
-    return x[train_indexes],x[test_indexes],y[train_indexes],y[test_indexes]
-
-
-def ridge_regression(y, tx, lambda_):
-    """implement ridge regression.
-    
-    Args:
-        y: numpy array of shape (N,), N is the number of samples.
-        tx: numpy array of shape (N,D), D is the number of features.
-        lambda_: scalar.
-    
-    Returns:
-        w: optimal weights, numpy array of shape(D,), D is the number of features.
-
-    >>> ridge_regression(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]), 0)
-    array([ 0.21212121, -0.12121212])
-    >>> ridge_regression(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]), 1)
-    array([0.03947092, 0.00319628])
-    """
-    X = tx
-    weight = np.linalg.solve(X.T@X + (lambda_*2*X.shape[0]) * np.eye(X.shape[1]),X.T @ y)
-
-    return weight
-
-def subgradient_func(x):
-    if x < 0:
-        return -1
-    else:
-        return 1
-
-
-def compute_subgradient_mae(y, tx, w):
-    """Compute a subgradient of the MAE at w.
-        
-    Args:
-        y: numpy array of shape=(N, )
-        tx: numpy array of shape=(N,2)
-        w: numpy array of shape=(2, ). The vector of model parameters.
-        
-    Returns:
-        A numpy array of shape (2, ) (same shape as w), containing the subgradient of the MAE at w.
-    """
-    err = y - tx @ w 
-    sign = np.vectorize(subgradient_func)(err)
-    output = - 1.0/y.shape[0] * tx.T @ sign  
-    return output
+Parameter = namedtuple('Parameter', ['name', 'value'])
 
 def compute_gradient(y, tx, w):
     err = y - tx.dot(w)
@@ -166,180 +22,23 @@ def compute_loss(y, tx, w):
     e = y - tx.dot(w)
     return calculate_mse(e)
 
-def gradient_descent(y, tx, initial_w, max_iters, gamma):
-    """The Gradient Descent (GD) algorithm.
-
-    Args:
-        y: shape=(N, )
-        tx: shape=(N,2)
-        initial_w: shape=(2, ). The initial guess (or the initialization) for the model parameters
-        max_iters: a scalar denoting the total number of iterations of GD
-        gamma: a scalar denoting the stepsize
-
-    Returns:
-        losses: a list of length max_iters containing the loss value (scalar) for each iteration of GD
-        ws: a list of length max_iters containing the model parameters as numpy arrays of shape (2, ), for each iteration of GD
-    """
-    # Define parameters to store w and loss
-    ws = [initial_w]
-    losses = []
-    w = initial_w
-    for n_iter in range(max_iters):
-        loss = compute_loss(y,tx,w)
-        gradient = compute_gradient(y,tx,w)
-
-        w = w - gamma * gradient
-        # store w and loss
-        ws.append(w)
-        losses.append(loss)
-      #  print("GD iter. {bi}/{ti}: loss={l}, w0={w0}, w1={w1}".format(
-       #       bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
-    return losses, ws
-
-
-
-def compute_stoch_gradient(y, tx, w):
-    """Compute a stochastic gradient at w from just few examples n and their corresponding y_n labels.
-
-    Args:
-        y: shape=(N, )
-        tx: shape=(N,2)
-        w: shape=(2, ). The vector of model parameters.
-
-    Returns:
-        An array of shape (2, ) (same shape as w), containing the stochastic gradient of the loss at w.
-    """
-
-    return compute_gradient(y,tx,w)
-
-
-def stochastic_gradient_descent(y, tx, initial_w, batch_size, max_iters, gamma):
-    """The Stochastic Gradient Descent algorithm (SGD).
-
-    Args:
-        y: shape=(N, )
-        tx: shape=(N,2)
-        initial_w: shape=(2, ). The initial guess (or the initialization) for the model parameters
-        batch_size: a scalar denoting the number of data points in a mini-batch used for computing the stochastic gradient
-        max_iters: a scalar denoting the total number of iterations of SGD
-        gamma: a scalar denoting the stepsize
-
-    Returns:
-        losses: a list of length max_iters containing the loss value (scalar) for each iteration of SGD
-        ws: a list of length max_iters containing the model parameters as numpy arrays of shape (2, ), for each iteration of SGD
-    """
-
-    # Define parameters to store w and loss
-    ws = [initial_w]
-    losses = []
-    w = initial_w
-
-    for n_iter in range(max_iters):
-        for (cur_y,cur_x) in batch_iter(y,tx,batch_size,1):
-            loss = compute_loss(y,tx,w)
-            gradient = compute_stoch_gradient(cur_y,cur_x,w)
-            w = w - gamma * gradient
-            losses.append(loss)
-            ws.append(w)
-
-      #  print("SGD iter. {bi}/{ti}: loss={l}, w0={w0}, w1={w1}".format(
-       #     bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
-    return losses, ws
-
-
-
-##From provided helpers:
-def standardize(x):
-    """Standardize the original data set."""
-    mean_x = np.mean(x)
-    x = x - mean_x
-    std_x = np.std(x)
-    x = x / std_x
-    return x, mean_x, std_x
-
-
-def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
-    """
-    Generate a minibatch iterator for a dataset.
-    Takes as input two iterables (here the output desired values 'y' and the input data 'tx')
-    Outputs an iterator which gives mini-batches of `batch_size` matching elements from `y` and `tx`.
-    Data can be randomly shuffled to avoid ordering in the original data messing with the randomness of the minibatches.
-    Example of use :
-    for minibatch_y, minibatch_tx in batch_iter(y, tx, 32):
-        <DO-SOMETHING>
-    """
-    data_size = len(y)
-
-    if shuffle:
-        shuffle_indices = np.random.permutation(np.arange(data_size))
-        shuffled_y = y[shuffle_indices]
-        shuffled_tx = tx[shuffle_indices]
-    else:
-        shuffled_y = y
-        shuffled_tx = tx
-    for batch_num in range(num_batches):
-        start_index = batch_num * batch_size
-        end_index = min((batch_num + 1) * batch_size, data_size)
-        if start_index != end_index:
-            yield shuffled_y[start_index:end_index], shuffled_tx[start_index:end_index]
-
-
-
-
-
-def generate_w(num_intervals):
-    """Generate a grid of values for w0 and w1."""
-    w0 = np.linspace(-100, 200, num_intervals)
-    w1 = np.linspace(-150, 150, num_intervals)
-    return w0, w1
-
-
-def get_best_parameters(w0, w1, losses):
-    """Get the best w from the result of grid search."""
-    min_row, min_col = np.unravel_index(np.argmin(losses), losses.shape)
-    return losses[min_row, min_col], w0[min_row], w1[min_col]
-
-
-def grid_search(y, tx, grid_w0, grid_w1):
-    """Algorithm for grid search.
-        
-    Args:
-        y: numpy array of shape=(N, )
-        tx: numpy array of shape=(N,2)
-        grid_w0: numpy array of shape=(num_grid_pts_w0, ). A 1D array containing num_grid_pts_w0 values of parameter w0 to be tested in the grid search.
-        grid_w1: numpy array of shape=(num_grid_pts_w1, ). A 1D array containing num_grid_pts_w1 values of parameter w1 to be tested in the grid search.
-        
-    Returns:
-        losses: numpy array of shape=(num_grid_pts_w0, num_grid_pts_w1). A 2D array containing the loss value for each combination of w0 and w1
-    """
-
-    losses = np.zeros((len(grid_w0), len(grid_w1)))
-
-    for i in range(0,grid_w0.shape[0]):
-        for j in range(0,grid_w1.shape[0]):
-            losses[i][j] = compute_loss(y,tx,np.array([grid_w0[i],grid_w1[j]]))
-    return losses
-
-def ridge_regression(y, tx, lambda_):
-    aI = lambda_ * np.identity(tx.shape[1])
-    a = tx.T.dot(tx) + aI
-    b = tx.T.dot(y)
-    return np.linalg.solve(a, b)
-
-
-def predict_y(tx, w):
-    return tx.dot(w)
-    
-def compute_loss(y, tx, w):
-    """Calculate the loss.
-
-    You can calculate the loss using mse or mae.
-    """
-    e = y - tx.dot(w)
-    return calculate_mse(e)
-
 def calculate_mse(e):
     return 1/2*np.mean(e**2)
+
+def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
+    # Define parameters to store w and loss
+    # ws = [initial_w]
+    # losses = []
+    w = initial_w
+    for n_iter in range(max_iters):
+        # compute loss, gradient
+        grad, err = compute_gradient(y, tx, w)
+        loss = calculate_mse(err)
+        # gradient w by descent update
+        w = w - gamma * grad
+
+    return w, loss
+
 
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
     # ws = [initial_w]
@@ -355,9 +54,511 @@ def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
             # calculate loss
             loss = compute_loss(y, tx, w)
             # store w and loss
-        #     ws.append(w)
-        #     losses.append(loss)
 
-        # print("SGD({bi}/{ti}): loss={l}, w0={w0}, w1={w1}".format(
-        #       bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
     return w, loss
+
+
+
+def compute_error(y: np.ndarray, tx: np.ndarray, w: np.ndarray):
+    """
+    Given a data matrix tx, weight parameters w and dependent variable vector y, 
+    computes the errors (residuals) of the linear regression model by taking the difference 
+    between the true values (y) and the predicted values (tX@w)
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        w (np.ndarray): The weight parameters of the linear model
+
+    Returns:
+        np.ndarray: error vector
+    """
+    N = len(y)
+    y = y.reshape((-1, 1))
+    X = tx.reshape((N, -1))
+    w = w.reshape((-1, 1))
+
+    e = y - np.dot(X, w)
+    return e
+
+
+def compute_mse(y: np.ndarray, tx: np.ndarray, w: np.ndarray):
+    """
+     Given a data matrix tx, weight parameters w and dependent variable vector y, 
+     computes the mean squared error of the linear regression model
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        w (np.ndarray): The weight parameters of the linear model
+
+    Returns:
+        float : The sum of the squared errors
+    """
+    N = len(y)
+    e = compute_error(y, tx, w)
+    return (1/ (2 * N)) * np.sum(e ** 2)
+
+
+def least_squares_gradient(y: np.ndarray, tx: np.ndarray, w: np.ndarray):
+    """
+    Given a data matrix tx, weight parameters w and dependent variable vector y, 
+    computes the gradient of the least squares linear regression model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        w (np.ndarray): The weight parameters of the linear model
+
+    Returns:
+        np.ndarray : The gradient with respect to the weight vector of the mean squared error.
+    """
+    return (1 / len(y)) * (tx.T @ ((tx @ w) - y))
+
+
+def least_squares_GD(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = None,
+                     max_iters: int = 100, gamma: float = 0.1, batch_size: int = None,
+                     num_batches: int = None, verbose: bool = False, *args, **kwargs):
+    """ 
+    Computes the weight parameters of the least squares linear regression using (mini-) batch gradient descent and
+    returns the mean squared error of the model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        initial_w (np.ndarray, optional): Initial weight paramter to start the gradient descent. If None, initialized randomly
+        max_iters (int, optional): Number of iterations. Defaults to 100.
+        gamma (float, optional): Fixed step-size for the gradient descent. Defaults to 0.1.
+        batch_size (int, optional): Batch size. Defaults to None (i.e full batch gradient descent)
+        num_batches (int, optional): Number of batches to sample. Defaults to None (i.e. uses all data)
+        verbose (bool, optional): Whether to print accuracy and loss at each iteration. Defaults to False.
+
+    Returns:
+        (np.ndarray, float): (weight parameters, mean squared error)
+    """
+    w = initial_w if initial_w is not None else np.random.rand(tx.shape[1], 1)
+    y = y.reshape((-1, 1))
+
+    for i in range(max_iters):
+        for y_batch, tx_batch in batch_iter(y, tx, batch_size=batch_size, num_batches=num_batches):
+            gradient = least_squares_gradient(y_batch, tx_batch, w)
+            w = w - gamma * gradient
+
+        if verbose and i % 10 == 0:
+            y_pred = predict_linear(w, tx)
+            accuracy = compute_accuracy(y, y_pred)
+            loss = compute_log_loss(y, tx, w)
+            print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
+
+    loss = compute_mse(y, tx, w)
+    
+    return w, loss
+
+
+def least_squares_SGD(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = None,
+                      max_iters: int = 100, gamma: float = 0.1, num_batches: int = None, *args, **kwargs):
+    """ 
+    Computes the weight parameters of the least squares linear regression using stochastic gradient descent
+    with batch size of 1 and returns the mean squared error of the model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        initial_w (np.ndarray, optional): Initial weight paramter to start the stochastic gradient descent. If None, initialized randomly
+        max_iters (int, optional): Number of iterations. Defaults to 100.
+        gamma (float, optional): Fixed step-size for the gradient descent. Defaults to 0.1.
+        num_batches (int, optional): Number of batches to sample. Defaults to None (i.e. uses all data)
+
+    Returns:
+        (np.ndarray, float): (weight parameters, mean squared error)
+    """
+    return least_squares_GD(y, tx, initial_w=initial_w, max_iters=max_iters, gamma=gamma, batch_size=1, num_batches=num_batches)
+
+
+def least_squares(y: np.ndarray, tx: np.ndarray, *args, **kwargs):
+    """
+    Computes the weight parameters of the least squares linear regression
+    using the normal equations and returns it with the mean squared error of the model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+
+    Returns:
+        (np.ndarray, float): (weight parameters, mean squared error)
+    """
+    w = np.linalg.solve(np.dot(tx.T, tx), np.dot(tx.T, y))
+    loss = compute_mse(y, tx, w)
+    return w, loss
+
+
+def ridge_regression(y: np.ndarray, tx: np.ndarray, lambda_: float, *args, **kwargs):
+    """ 
+    Computes the weight parameters of the L2 regularized linear regression,
+    also called ridge regression, using the normal equations.
+    It also returns the mean squared error of the model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        lambda_ (float): The L2 regularization hyper-parameter (higher values incur higher regularization)
+
+    Returns:
+        (np.ndarray, float): (weight parameters , mean squared error)
+    """
+    N, D = tx.shape
+    w = np.linalg.solve(np.dot(tx.T, tx) + 2 * lambda_ * N * np.eye(D), np.dot(tx.T, y))
+    loss = compute_mse(y, tx, w)
+    return w, loss
+
+
+def compute_log_loss(y: np.ndarray, tx: np.ndarray, w: np.ndarray):
+    """ 
+    Given a data matrix tx, weight parameters w and dependent variable vector y, 
+    compute the negative log-likelihood of the logistic regression model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        w (np.ndarray): The weight parameters of the linear model
+
+    Returns:
+        float: log likelihood of the logistic regression model
+    """
+    probs = sigmoid(tx @ w)
+    return -(1 / len(y)) * np.sum(y * np.log(probs) + (1 - y) * np.log(1 - probs))
+
+ 
+def logistic_gradient(y: np.ndarray, tx: np.ndarray, w: np.ndarray, lambda_: float = 0):
+    """
+    Given a data matrix tx, weight parameters w and dependent variable vector y (and regularization parameter lambda_), 
+    computes the gradient of the log likelihood of the (regularized) logistic regression model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        w (np.ndarray): The weight parameters of the linear model
+        lambda_ (float, optional): The L2 regularization hyper-parameter. Defaults to 0, meaning no regularization.
+
+    Returns:
+        np.ndarray : The gradient with respect to the weight vector of the log likelihood of the model
+    """
+    return (1 / len(y)) * (tx.T @ (sigmoid(tx @ w) - y)) + 2 * lambda_ * w
+
+
+def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = None,
+                        max_iters: int = 100, gamma: float = 0.1,
+                        batch_size: int = None, num_batches: int = None, *args, **kwargs):
+    """ 
+    Computes the weight parameters of the logistic regression using gradient descent with a custom batch size and
+    returns it with the negative log-likelihood of the model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        initial_w (np.ndarray, optional): Initial weight paramter to start the stochastic gradient descent. If None, initialized randomly
+        max_iters (int, optional): Number of iterations. Defaults to 100.
+        gamma (float, optional): Fixed step-size for the gradient descent. Defaults to 0.1.
+        batch_size (int, optional): Batch size. Defaults to None (i.e full batch gradient descent)
+        num_batches (int, optional): Number of batches to sample. Defaults to None (i.e. uses all data)
+
+    Returns:
+        (np.ndarray, float): (weight parameters , negative log-likelihood)
+    """
+    return reg_logistic_regression(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
+                                   batch_size=batch_size, num_batches=num_batches)
+
+
+def reg_logistic_regression(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
+                            max_iters: int = 100, gamma: float = 0.1,
+                            batch_size: int = None, num_batches: int = None, verbose: bool = False, *args, **kwargs):
+    """ 
+    Computes the weight parameters of the L2 regularized logistic regression using gradient descent with custom batch size
+    and returns it with the negative log-likelihood of the model.
+
+    Args:
+        y (np.ndarray): The dependent variable y
+        tx (np.ndarray): The data matrix (a row represents one observation of the features)
+        lambda_ (float): The L2 regularization hyper-parameter (higher values incur higher regularization)
+        initial_w (np.ndarray, optional): Initial weight paramter to start the stochastic gradient descent. If None, initialized randomly
+        max_iters (int, optional): Number of iterations. Defaults to 100.
+        gamma (float, optional): Fixed step-size for the gradient descent. Defaults to 0.1.
+        batch_size (int, optional): Batch size. Defaults to None (i.e full batch gradient descent)
+        num_batches (int, optional): Number of batches to sample. Defaults to None (i.e. uses all data)
+        verbose (bool, optional): Whether to print accuracy and loss at each iteration. Defaults to False.
+
+    Returns:
+        (np.ndarray, float): (weight parameters , negative log-likelihood)
+    """
+    w = initial_w if initial_w is not None else np.random.rand(tx.shape[1], 1)
+    y = y.reshape((-1, 1))
+
+    for i in range(max_iters):
+        for y_batch, tx_batch in batch_iter(y, tx, batch_size=batch_size, num_batches=num_batches):
+            gradient = logistic_gradient(y_batch, tx_batch, w, lambda_=lambda_)
+            w = w - gamma * gradient
+        
+        if verbose and i % 10 == 0:
+            y_pred = predict_logistic(w, tx)
+            accuracy = compute_accuracy(y, y_pred)
+            loss = compute_log_loss(y, tx, w)
+            print(f'Iteration = {i}, accuracy = {accuracy}, loss = {loss}')
+
+    loss = compute_log_loss(y, tx, w)   
+    
+    return w, loss
+
+
+def cross_validate(y: np.ndarray, tx: np.ndarray, model_fn: Callable, loss_fn: Callable, predict_fn: Callable,
+                   k_fold: int = 5, seed: float = 1):
+    """
+    Run K-fold cross validation on the data and report the averaged loss, accuracy and F1 scores
+    over K models.
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        model_fn (Callable): Modelling function
+        loss_fn (Callable): Loss function
+        predict_fn (Callable): Prediction function
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+
+    Returns:
+        Tuple[float, float, float]: Averaged loss, accuracy and F1 scores
+    """
+    accuracies = []
+    losses = []
+    f1_scores = []
+
+    for tx_train, y_train, tx_test, y_test in kfold_cv_iter(y, tx, k=k_fold, seed=seed):
+        w, _ = model_fn(y_train, tx_train)
+
+        loss = loss_fn(y_test, tx_test, w)
+        y_pred = predict_fn(w, tx_test)
+        accuracy = compute_accuracy(y_test, y_pred)
+        f1_score = compute_f1(y_test, y_pred)
+
+        losses.append(loss)
+        accuracies.append(accuracy)
+        f1_scores.append(f1_score)
+
+    return np.mean(losses), np.mean(accuracies), np.mean(f1_scores)
+
+
+def grid_search_cv(y: np.ndarray, tx: np.ndarray, model_fn: Callable, loss_fn: Callable, predict_fn: Callable,
+                   param_grid: Dict[str, Any], transform_fn: Callable = None, scoring: str = 'loss',
+                   k_fold: int = 5, seed: float = 1):
+    """
+    Run a Grid Search with Cross validation on the data to tune the hyperparameters for the given model.
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        model_fn (Callable): Modelling function. Used to model the data
+        loss_fn (Callable): Loss function. Used to compute the loss
+        predict_fn (Callable): Prediction function. Used to predict on the data
+        param_grid (Dict[str, Any]): Parameter space. Dictionary of <param, values> pairs.
+        transform_fn (Callable, optional): Transformation function. Used to transform data before CV. Defaults to None.
+        scoring (str, optional): Scoring criteria to choose the best parameter. Accepted values: ['loss', 'accuracy', 'f1'].
+                                 Defaults to 'loss'.
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and dict of best parameters
+    """
+    best_scoring_value = None
+    best_params = None
+    best_metrics = {
+        'loss': None,
+        'accuracy': None,
+        'f1_score': None
+    }
+    parameter_space = []
+
+    for param, values in param_grid.items():
+        parameters = []
+
+        if not isinstance(values, list) and not isinstance(values, np.ndarray):
+            values = [values]
+
+        for value in values:
+            # Convert other sequences to tuple to make the parameter accesible to be used as a dictionary key
+            parameters.append(Parameter(name=param, value=value if np.isscalar(value) else tuple(value)))
+
+        parameter_space.append(parameters)
+    
+    transformations = {}
+    transform_params = list(inspect.signature(transform_fn).parameters.keys()) if transform_fn else None
+
+    for params in product(*parameter_space):
+        params_dict = {param.name: param.value for param in params}
+        model_fn_partial = partial(model_fn, **params_dict)
+        transformed_tx = tx
+
+        if transform_fn:
+            # Check if the transformation already exists with these parameters and avoid extra computation
+            common_params = tuple([param for param in params if param.name in transform_params])
+            transformed_tx = transformations.get(common_params)
+            if transformed_tx is None:
+                # Store transformations for later use
+                transformed_tx = transform_fn(tx, **params_dict)
+                transformations[common_params] = transformed_tx
+
+        loss, accuracy, f1_score = cross_validate(y, transformed_tx, model_fn=model_fn_partial, loss_fn=loss_fn, predict_fn=predict_fn,
+                                                  k_fold=k_fold, seed=seed)
+        scoring_value = loss
+        
+        if scoring == 'accuracy':
+            scoring_value = accuracy
+        elif scoring == 'f1':
+            scoring_value = f1_score
+        
+        if best_scoring_value is None or scoring_value < best_scoring_value:
+            best_scoring_value = scoring_value
+            best_params = params
+            best_metrics['loss'] = loss
+            best_metrics['accuracy'] = accuracy
+            best_metrics['f1_score'] = f1_score
+
+    
+    return best_metrics, {param.name: param.value for param in best_params}
+
+
+def logistic_regression_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+                           k_fold: int = 5, seed: float = 1, transform: bool = True) :
+    """Run logistic regression with grid search over cross validation
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        param_grid (Dict[str, Any]): Parameter space
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+        transform (bool, optional): Whether to apply transformation. Defaults to True.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
+    """
+    model_fn = logistic_regression
+    loss_fn = compute_log_loss
+    predict_fn = predict_logistic
+    transform_fn = build_poly if transform else None
+    return grid_search_cv(y, tx, model_fn=model_fn, loss_fn=loss_fn, predict_fn=predict_fn,
+                          param_grid=param_grid, transform_fn=transform_fn, k_fold=k_fold, seed=seed)
+
+
+def reg_logistic_regression_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+                               k_fold: int = 5, seed: float = 1, transform: bool = True):
+    """Run regularized logistic regression with grid search over cross validation
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        param_grid (Dict[str, Any]): Parameter space
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+        transform (bool, optional): Whether to apply transformation. Defaults to True.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
+    """
+    model_fn = reg_logistic_regression
+    loss_fn = compute_log_loss
+    predict_fn = predict_logistic
+    transform_fn = build_poly if transform else None
+    return grid_search_cv(y, tx, model_fn=model_fn, loss_fn=loss_fn, predict_fn=predict_fn,
+                          param_grid=param_grid, transform_fn=transform_fn, k_fold=k_fold, seed=seed)
+
+
+def ridge_regression_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+                        k_fold: int = 5, seed: float = 1, transform: bool = True) :
+    """Run ridge regression with grid search over cross validation
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        param_grid (Dict[str, Any]): Parameter space
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+        transform (bool, optional): Whether to apply transformation. Defaults to True.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
+    """
+    model_fn = ridge_regression
+    loss_fn = compute_mse
+    predict_fn = predict_linear
+    transform_fn = build_poly if transform else None
+    return grid_search_cv(y, tx, model_fn=model_fn, loss_fn=loss_fn, predict_fn=predict_fn,
+                          param_grid=param_grid, transform_fn=transform_fn, k_fold=k_fold, seed=seed)
+
+
+def least_squares_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+                     k_fold: int = 5, seed: float = 1):
+    """Run least squares (normal equations) with grid search over cross validation
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        param_grid (Dict[str, Any]): Parameter space
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
+    """
+    model_fn = least_squares
+    loss_fn = compute_mse
+    predict_fn = predict_linear
+    return grid_search_cv(y, tx, model_fn=model_fn, loss_fn=loss_fn, predict_fn=predict_fn,
+                          param_grid=param_grid, k_fold=k_fold, seed=seed)
+
+
+def least_squares_GD_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+                        k_fold: int = 5, seed: float = 1, transform: bool = True):
+    """Run least squares GD with grid search over cross validation
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        param_grid (Dict[str, Any]): Parameter space
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+        transform (bool, optional): Whether to apply transformation. Defaults to True.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
+    """
+    model_fn = least_squares_GD
+    loss_fn = compute_mse
+    predict_fn = predict_linear
+    transform_fn = build_poly if transform else None
+    return grid_search_cv(y, tx, model_fn=model_fn, loss_fn=loss_fn, predict_fn=predict_fn,
+                          param_grid=param_grid, transform_fn=transform_fn, k_fold=k_fold, seed=seed)
+
+
+def least_squares_SGD_cv(y: np.ndarray, tx: np.ndarray, param_grid: Dict[str, Any],
+                         k_fold: int = 5, seed: float = 1, transform: bool = True) :
+    """Run least squares SGD with grid search over cross validation
+
+    Args:
+        y (np.ndarray): Labels data
+        tx (np.ndarray): Features data
+        param_grid (Dict[str, Any]): Parameter space
+        k_fold (int, optional): Number of folds. Defaults to 5.
+        seed (float, optional): Random seed. Defaults to 1.
+        transform (bool, optional): Whether to apply transformation. Defaults to True.
+
+    Returns:
+        Tuple[Dict[str, float], Dict[str, Any]]: Dict of metrics and best parameters
+    """
+    model_fn = least_squares_SGD
+    loss_fn = compute_mse
+    predict_fn = predict_linear
+    transform_fn = build_poly if transform else None
+    return grid_search_cv(y, tx, model_fn=model_fn, loss_fn=loss_fn, predict_fn=predict_fn,
+                          param_grid=param_grid, transform_fn=transform_fn, k_fold=k_fold, seed=seed)
+
+
