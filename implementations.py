@@ -26,6 +26,9 @@ def calculate_mse(e):
     return 1/2*np.mean(e**2)
 
 def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
+    """
+    compute mean squared error gd
+    """
     # Define parameters to store w and loss
     # ws = [initial_w]
     # losses = []
@@ -41,6 +44,9 @@ def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
 
 
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
+    """
+    compute mean squared error sgd
+    """
     # ws = [initial_w]
     # losses = []
     w = initial_w
