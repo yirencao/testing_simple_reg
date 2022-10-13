@@ -154,24 +154,17 @@ def compute_subgradient_mae(y, tx, w):
     return output
 
 def compute_gradient(y, tx, w):
-    """Computes the gradient at w.
+    err = y - tx.dot(w)
+    grad = -tx.T.dot(err) / len(err)
+    return grad, err
 
-    Args:
-        y: shape=(N, )
-        tx: shape=(N,2)
-        w: shape=(2, ). The vector of model parameters.
+def compute_loss(y, tx, w):
+    """Calculate the loss.
 
-    Returns:
-        An array of shape (2, ) (same shape as w), containing the gradient of the loss at w.
+    You can calculate the loss using mse or mae.
     """
     e = y - tx.dot(w)
-    grad = - 1.0/y.shape[0] * (tx.T @ e)
-    return grad
-
-def compute_loss(y,tx,w):
-    e = y - tx @ w
-    MSE = 1.0/(2.0 * tx.shape[0]) * (e.dot(e))
-    return MSE 
+    return calculate_mse(e)
 
 def gradient_descent(y, tx, initial_w, max_iters, gamma):
     """The Gradient Descent (GD) algorithm.
@@ -326,3 +319,45 @@ def grid_search(y, tx, grid_w0, grid_w1):
         for j in range(0,grid_w1.shape[0]):
             losses[i][j] = compute_loss(y,tx,np.array([grid_w0[i],grid_w1[j]]))
     return losses
+
+def ridge_regression(y, tx, lambda_):
+    aI = lambda_ * np.identity(tx.shape[1])
+    a = tx.T.dot(tx) + aI
+    b = tx.T.dot(y)
+    return np.linalg.solve(a, b)
+
+
+def predict_y(tx, w):
+    return tx.dot(w)
+    
+def compute_loss(y, tx, w):
+    """Calculate the loss.
+
+    You can calculate the loss using mse or mae.
+    """
+    e = y - tx.dot(w)
+    return calculate_mse(e)
+
+def calculate_mse(e):
+    return 1/2*np.mean(e**2)
+
+def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
+    # ws = [initial_w]
+    # losses = []
+    w = initial_w
+
+    for n_iter in range(max_iters):
+        for y_batch, tx_batch in batch_iter(y, tx, batch_size=1, num_batches=1):
+            # compute a stochastic gradient and loss
+            grad, _ = compute_gradient(y_batch, tx_batch, w)
+            # update w through the stochastic gradient update
+            w = w - gamma * grad
+            # calculate loss
+            loss = compute_loss(y, tx, w)
+            # store w and loss
+        #     ws.append(w)
+        #     losses.append(loss)
+
+        # print("SGD({bi}/{ti}): loss={l}, w0={w0}, w1={w1}".format(
+        #       bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
+    return w, loss
