@@ -278,62 +278,19 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
     return reg_logistic_regression1(y, tx, lambda_=0, initial_w=initial_w, max_iters=max_iters, gamma=gamma,
                                    batch_size=batch_size, num_batches=num_batches)
 
-#  Calculate yhat predictions and apply sigmoid function on predicted labels
-def predict_sigmoid(data, coefficients):
-    '''
-    Calculates yhat and applies sigmoid function on it
-    Arguments: 
-        data: Dataset to predict its labels [numpy array], 
-        coefficients: Classification coefficients [float]
-    Outputs: 
-        yhat: Predicted labels [float]
-    '''    
-    yhat = np.matmul(data,coefficients)
-    return 1.0 / (1.0 + np.exp(-yhat))
+def logistic_loss(y, tx, w):
+    """Compute the loss by negative log likelihood for the logistic regression."""
+    epsilon = 1e-15
+    num_samples = len(y)
+    pred = sigmoid(tx.dot(w))
+    pred = np.clip(pred, epsilon, 1-epsilon)
+    loss = y.T.dot(np.log(pred)) + (1 - y).T.dot(np.log(1 - pred))
+    return np.squeeze(- loss)
 
-
-# Estimate regularized logistic regression coefficients using gradient descent
-def reg_logistic_regression (y, tx, lambda_, initial_w, max_iters, gamma):
-    '''
-    Finds W coefficients using least square loss function with gradient descent
-    Arguments:      
-         y: The labels of randomly chosen train data [numpy array],
-         tx: The random section chosen as the train data in each step of learning [numpy array], 
-         lambda_ : Regularization parameter [float],
-         initial_w: Initial value for the weight vector [numpy array],
-         max_iters: Maximum number of steps to run [int],
-         gamma: Learning rate of gradient descent method) [float]
-        
-    Outputs: 
-        w: Classification coefficients [float],
-        loss: Loss function calculated for the method [float]
-    '''   
-    # initialize coefficients with zero
-    w = initial_w
-    
-    error =[]
-    gradient =[]
-    yhat = predict_sigmoid(tx, w)
-    
-    # apply gradient descent on least square loss function until meeting the max number of iterations
-    for epoch in range(max_iters):
-   
-            #  calculate yhat predictions and apply sigmoid function on predicted labels
-            yhat = predict_sigmoid(tx, w)
-            
-            # compute prediction error
-            error = (y[:, np.newaxis] - yhat)
-            
-            # gradient descent
-            multiplied = np.matmul(tx,w)
-            sigma = 1/ (1 + np.exp(-multiplied))
-            gradient = np.matmul(tx.T, sigma-yhat) + lambda_ * w
-            gradient = gamma * gradient
-            # update coefficients
-            w = w - gradient
-        
-    loss = (np.matmul(-y.T, np.log(yhat)) - np.matmul((1 -y.T), np.log(1 - yhat)))/(yhat.shape[0])  + lambda_/2 *(np.linalg.norm(w))   
-    return  w, loss
+def reg_logistic_loss(y, tx, w,lambda_):
+    """Compute the regularized logistic loss by negative log likelihood."""
+    loss = logistic_loss(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
+    return loss
 
 def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
                             max_iters: int = 100, gamma: float = 0.1,
