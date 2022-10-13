@@ -317,6 +317,7 @@ def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
     # build tx
     # tx = np.c_[np.ones((y.shape[0], 1)), x]
     w = initial_w
+    loss, w = learning_by_penalized_gradient(y, tx, w, gamma, lambda_)
 
     # start the logistic regression
     for iter in range(max_iters):
