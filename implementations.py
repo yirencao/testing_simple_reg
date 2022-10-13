@@ -292,6 +292,41 @@ def reg_logistic_loss(y, tx, w,lambda_):
     loss = logistic_loss(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
     return loss
 
+def logistic_gradient1(y, tx, w):
+    """Computes the gradient for the logistic gradient descent."""
+    gradient = np.dot(tx.transpose(),(sigmoid(np.dot(tx,w))-y))
+    return gradient
+
+def reg_logistic_gradient(y, tx, w, lambda_):
+    """Computes the gradient for the regularized logistic gradient descent"""
+    gradient = logistic_gradient1(y, tx, w) + 2 * lambda_ * w
+    return gradient
+
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iter, gamma): 
+    """Regularized logistic regression using gradient descent for max_iters iteration given
+    the input labelled data y, tx with initial_w, gamma and lambda as the initial weight,
+    learning rate and regularization factor respectively. Return final weights and loss"""
+    
+    num_samples = len(y)
+    losses = []
+    w = initial_w
+    
+    for iter in range(max_iter):
+       
+        for batch_y, batch_tx in batch_iter(y, tx, batch_size=1, num_batches = 1):
+            
+            gradient = reg_logistic_gradient(batch_y,batch_tx,w, lambda_)
+            w -= gamma*gradient
+            loss = reg_logistic_loss(batch_y,batch_tx,w,lambda_)
+            
+            
+        losses.append(loss)
+        
+    # Calculate loss over the whole training set with L2-regularization
+    loss = reg_logistic_loss(y,tx,w,lambda_)
+    
+    return w, loss
+
 def reg_logistic_regression1(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
                             max_iters: int = 100, gamma: float = 0.1,
                             batch_size: int = None, num_batches: int = None, verbose: bool = False, *args, **kwargs):
