@@ -280,7 +280,7 @@ def logistic_regression(y: np.ndarray, tx: np.ndarray, initial_w: np.ndarray = N
 
 
 def reg_logistic_regression(y: np.ndarray, tx: np.ndarray, lambda_: float, initial_w: np.ndarray = None,
-                            max_iters: int = 100, gamma: float = 0.1,
+                            gamma: float = 0.1, max_iters: int = 100, 
                             batch_size: int = None, num_batches: int = None, verbose: bool = False, *args, **kwargs):
     """ 
     Computes the weight parameters of the L2 regularized logistic regression using gradient descent with custom batch size
